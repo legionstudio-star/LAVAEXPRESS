@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LavaExpress — Lavadoras a domicilio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0E2626;
+    --teal:#0E6E6E;
+    --teal-deep:#0A4F4F;
+    --coral:#FF6B4A;
+    --coral-deep:#E5502F;
+    --mist:#F3F7F6;
+    --line:#D8E3E1;
+    --gray:#5C7472;
+    --white:#FFFFFF;
+    --wa:#25D366;
+    --wa-deep:#1DA851;
+    --radius:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Inter', sans-serif;
+    color:var(--ink);
+    background:var(--mist);
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{ font-family:'Space Grotesk', sans-serif; letter-spacing:-0.02em; }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  .wrap{ max-width:480px; margin:0 auto; min-height:100vh; background:var(--white); box-shadow:0 0 40px rgba(14,38,38,0.06); position:relative; }
+
+  /* ---------- HEADER ---------- */
+  header{
+    background:linear-gradient(160deg, var(--teal-deep) 0%, var(--teal) 70%);
+    color:var(--white);
+    padding:28px 24px 34px;
+    position:relative;
+    overflow:hidden;
+  }
+  header::after{
+    content:"";
+    position:absolute; right:-40px; top:-40px;
+    width:180px; height:180px; border-radius:50%;
+    border:2px solid rgba(255,255,255,0.15);
+  }
+  header::before{
+    content:"";
+    position:absolute; right:10px; top:20px;
+    width:120px; height:120px; border-radius:50%;
+    border:2px solid rgba(255,255,255,0.12);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; font-size:20px; font-weight:700; }
+  .brand-mark{
+    width:34px; height:34px; border-radius:50%;
+    border:2.5px solid var(--white);
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+  }
+  .brand-mark::before{
+    content:""; width:16px; height:16px; border-radius:50%;
+    border:2px solid var(--white); border-top-color:transparent; border-right-color:transparent;
+    animation:spin 2.4s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .tagline{ margin-top:14px; font-size:26px; line-height:1.25; max-width:280px; font-weight:600; }
+  .subtag{ margin-top:8px; font-size:14px; opacity:0.85; max-width:260px; }
+
+  /* ---------- GAUGE ---------- */
+  .gauge-card{
+    margin:-20px 20px 0; background:var(--white); border-radius:var(--radius);
+    box-shadow:0 12px 28px rgba(14,38,38,0.14);
+    padding:18px 20px; position:relative; z-index:2;
+    display:flex; align-items:center; gap:16px;
+  }
+  .gauge{ position:relative; width:64px; height:64px; flex-shrink:0; }
+  .gauge svg{ transform:rotate(-90deg); }
+  .gauge-track{ fill:none; stroke:var(--line); stroke-width:7; }
+  .gauge-fill{ fill:none; stroke:var(--coral); stroke-width:7; stroke-linecap:round; transition:stroke-dashoffset 0.6s ease; }
+  .gauge-num{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; }
+  .gauge-text .label{ font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--gray); font-weight:600; }
+  .gauge-text .value{ font-size:14px; margin-top:2px; color:var(--ink); }
+  .gauge-text .value b{ color:var(--teal-deep); }
+
+  /* ---------- STEPS ---------- */
+  .steps{ padding:32px 24px 8px; }
+  .steps h2{ font-size:15px; text-transform:uppercase; letter-spacing:0.08em; color:var(--gray); font-weight:600; margin-bottom:18px; }
+  .step{ display:flex; gap:14px; margin-bottom:18px; }
+  .step-num{
+    font-family:'IBM Plex Mono', monospace; font-size:13px; font-weight:600; color:var(--teal);
+    width:26px; height:26px; border:1.5px solid var(--teal); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .step p{ font-size:14.5px; line-height:1.5; color:var(--ink); }
+  .step strong{ display:block; font-size:15px; margin-bottom:2px; }
+
+  /* ---------- FORM ---------- */
+  .panel{ padding:8px 24px 28px; }
+  .panel h2{ font-size:20px; margin:18px 0 4px; }
+  .panel .hint{ font-size:13.5px; color:var(--gray); margin-bottom:18px; }
+  label{ display:block; font-size:12.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; color:var(--gray); margin:14px 0 6px; }
+  input, select{
+    width:100%; padding:12px 14px; border:1.5px solid var(--line); border-radius:10px;
+    font-family:'Inter', sans-serif; font-size:15px; color:var(--ink); background:var(--white);
+  }
+  input:focus, select:focus{ outline:none; border-color:var(--teal); }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .avail-note{
+    margin-top:14px; padding:12px 14px; border-radius:10px; background:var(--mist);
+    font-size:13.5px; display:flex; justify-content:space-between; align-items:center;
+    border:1px solid var(--line);
+  }
+  .avail-note.ok{ color:var(--teal-deep); }
+  .avail-note.warn{ color:var(--coral-deep); }
+  .avail-note b.mono{ font-size:14px; }
+
+  .cta{
+    margin-top:22px; width:100%; padding:15px; border:none; border-radius:12px;
+    background:var(--coral); color:var(--white); font-size:15.5px; font-weight:600;
+    font-family:'Space Grotesk', sans-serif; cursor:pointer; transition:background 0.15s ease;
+  }
+  .cta:hover{ background:var(--coral-deep); }
+  .cta:disabled{ background:var(--line); color:var(--gray); cursor:not-allowed; }
+
+  .cta-wa{
+    margin-top:12px; width:100%; padding:14px; border-radius:12px; border:1.5px solid var(--wa);
+    background:var(--white); color:var(--wa-deep); font-size:14.5px; font-weight:600;
+    font-family:'Space Grotesk', sans-serif; cursor:pointer; display:flex; align-items:center;
+    justify-content:center; gap:8px; text-decoration:none;
+  }
+  .cta-wa:hover{ background:#EAFBF1; }
+  .wa-dot{ width:8px; height:8px; border-radius:50%; background:var(--wa); }
+
+  /* ---------- CONFIRMATION ---------- */
+  .confirm{ display:none; padding:40px 24px; text-align:center; }
+  .confirm.active{ display:block; }
+  .check{
+    width:64px; height:64px; border-radius:50%; background:var(--teal); color:var(--white);
+    display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:28px;
+  }
+  .confirm h2{ font-size:22px; margin-bottom:8px; }
+  .confirm p.sub{ color:var(--gray); font-size:14px; margin-bottom:26px; }
+  .ticket{ text-align:left; border:1.5px dashed var(--line); border-radius:var(--radius); padding:18px 20px; background:var(--mist); }
+  .ticket-row{ display:flex; justify-content:space-between; font-size:14px; padding:7px 0; border-bottom:1px solid var(--line); }
+  .ticket-row:last-child{ border-bottom:none; }
+  .ticket-row span:first-child{ color:var(--gray); }
+  .ticket-row span:last-child{ font-weight:600; font-family:'IBM Plex Mono', monospace; font-size:13.5px; }
+  .back-link{ display:inline-block; margin-top:22px; font-size:13.5px; color:var(--teal-deep); text-decoration:underline; cursor:pointer; background:none; border:none; font-family:'Inter'; }
+
+  /* ---------- WHATSAPP FLOAT ---------- */
+  .wa-float{
+    position:absolute; right:20px; bottom:24px; z-index:20;
+    width:56px; height:56px; border-radius:50%; background:var(--wa);
+    display:flex; align-items:center; justify-content:center; text-decoration:none;
+    box-shadow:0 8px 20px rgba(37,211,102,0.4);
+  }
+  .wa-float svg{ width:28px; height:28px; }
+  .wa-float::before{
+    content:""; position:absolute; inset:0; border-radius:50%; background:var(--wa);
+    animation:pulse 2s ease-out infinite; z-index:-1;
+  }
+  @keyframes pulse{ 0%{ transform:scale(1); opacity:0.6; } 100%{ transform:scale(1.9); opacity:0; } }
+
+  footer{ padding:18px 24px 100px; text-align:center; font-size:11.5px; color:var(--gray); }
+  .admin-link{ display:block; text-align:center; margin-top:6px; font-size:12px; color:var(--gray); text-decoration:underline; }
+
+  /* ---------- ADMIN ---------- */
+  .admin{ display:none; }
+  .admin.active{ display:block; }
+  .admin-pin{ padding:60px 28px; text-align:center; }
+  .admin-pin .lock{
+    width:56px; height:56px; border-radius:16px; background:var(--teal-deep); color:var(--white);
+    display:flex; align-items:center; justify-content:center; margin:0 auto 18px; font-size:24px;
+  }
+  .admin-pin h2{ font-size:19px; margin-bottom:6px; }
+  .admin-pin p{ font-size:13.5px; color:var(--gray); margin-bottom:22px; }
+  .pin-input{
+    width:100%; text-align:center; letter-spacing:10px; font-size:22px; font-family:'IBM Plex Mono', monospace;
+    padding:14px; border-radius:10px; border:1.5px solid var(--line);
+  }
+  .pin-hint{ margin-top:10px; font-size:12px; color:var(--gray); }
+  .admin-dash{ padding:24px 22px 40px; }
+  .admin-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+  .admin-top h2{ font-size:19px; }
+  .exit-link{ font-size:12.5px; color:var(--gray); text-decoration:underline; background:none; border:none; cursor:pointer; font-family:'Inter'; }
+  .cards{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:22px; }
+  .cards .card3{ grid-column:span 2; }
+  .card{ background:var(--mist); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .card .num{ font-family:'IBM Plex Mono', monospace; font-size:22px; font-weight:600; color:var(--teal-deep); }
+  .card .lbl{ font-size:11.5px; color:var(--gray); text-transform:uppercase; letter-spacing:0.04em; margin-top:2px; }
+  .sched-h{ font-size:13px; text-transform:uppercase; letter-spacing:0.06em; color:var(--gray); font-weight:600; margin:20px 0 10px; }
+  .row{
+    display:flex; justify-content:space-between; align-items:center; padding:12px 14px;
+    border:1px solid var(--line); border-radius:10px; margin-bottom:8px; background:var(--white);
+  }
+  .row .who{ font-size:14px; font-weight:600; }
+  .row .where{ font-size:12px; color:var(--gray); margin-top:2px; }
+  .row .when{ font-family:'IBM Plex Mono', monospace; font-size:12.5px; text-align:right; }
+  .status{ display:inline-block; margin-top:4px; font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:0.03em; }
+  .status.curso{ background:#FFF1EC; color:var(--coral-deep); }
+  .status.pend{ background:#EAF3F2; color:var(--teal-deep); }
+  .status.fin{ background:var(--line); color:var(--gray); }
+  .status.nueva{ background:var(--coral); color:var(--white); }
+  .row.is-new{ border-color:var(--coral); background:#FFF8F6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ================= VISTA CLIENTE ================= -->
+  <div id="clientView">
+    <header>
+      <div class="brand">
+        <div class="brand-mark"></div>
+        LavaExpress
+      </div>
+      <div class="tagline">Reserva tu lavadora, te la llevamos a la puerta</div>
+      <div class="subtag">Escaneaste el QR — completa la reserva en menos de un minuto.</div>
+    </header>
+
+    <div class="gauge-card" id="gaugeCard">
+      <div class="gauge">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle class="gauge-track" cx="32" cy="32" r="26"></circle>
+          <circle class="gauge-fill" id="gaugeFill" cx="32" cy="32" r="26" stroke-dasharray="163.4" stroke-dashoffset="163.4"></circle>
+        </svg>
+        <div class="gauge-num mono" id="gaugeNum">—</div>
+      </div>
+      <div class="gauge-text">
+        <div class="label">Disponibilidad ahora</div>
+        <div class="value" id="gaugeLabel">Elige fecha y hora para ver cupos</div>
+      </div>
+    </div>
+
+    <section class="steps">
+      <h2>Cómo funciona</h2>
+      <div class="step"><div class="step-num">1</div><p><strong>Reservas tu horario</strong>Dinos cuándo y por cuántas horas la necesitas.</p></div>
+      <div class="step"><div class="step-num">2</div><p><strong>Te la entregamos</strong>Llevamos la lavadora directo a tu conjunto o casa.</p></div>
+      <div class="step"><div class="step-num">3</div><p><strong>La recogemos</strong>Pasamos por ella a la hora pactada. Pagas en efectivo al recibirla.</p></div>
+    </section>
+
+    <div class="panel">
+      <h2>Datos de tu reserva</h2>
+      <p class="hint">Todos los campos son necesarios para confirmar la entrega.</p>
+
+      <form id="bookingForm">
+        <label>Nombre completo</label>
+        <input type="text" id="fname" placeholder="Ej. Camila Rojas" required>
+
+        <label>Conjunto / dirección</label>
+        <input type="text" id="faddr" placeholder="Ej. Conjunto Los Robles, Torre 3 Apto 502" required>
+
+        <label>Teléfono de contacto</label>
+        <input type="tel" id="fphone" placeholder="300 000 0000" required>
+
+        <div class="row2">
+          <div><label>Fecha</label><input type="date" id="fdate" required></div>
+          <div>
+            <label>Hora de inicio</label>
+            <select id="ftime" required>
+              <option value="">Elige</option>
+              <option value="7">7:00 a.m.</option>
+              <option value="9">9:00 a.m.</option>
+              <option value="11">11:00 a.m.</option>
+              <option value="13">1:00 p.m.</option>
+              <option value="15">3:00 p.m.</option>
+              <option value="17">5:00 p.m.</option>
+              <option value="19">7:00 p.m.</option>
+            </select>
+          </div>
+        </div>
+
+        <label>Horas que necesitas la lavadora</label>
+        <select id="fhours" required>
+          <option value="">Elige</option>
+          <option value="2">2 horas</option>
+          <option value="3">3 horas</option>
+          <option value="4">4 horas</option>
+          <option value="6">6 horas</option>
+        </select>
+
+        <div class="avail-note" id="availNote" style="display:none;"></div>
+
+        <button type="submit" class="cta" id="ctaBtn">Confirmar reserva</button>
+        <a class="cta-wa" id="waHelp" href="#" target="_blank"><span class="wa-dot"></span> ¿Dudas? Escríbenos por WhatsApp</a>
+      </form>
+    </div>
+
+    <div class="confirm" id="confirmView">
+      <div class="check">✓</div>
+      <h2>¡Reserva confirmada!</h2>
+      <p class="sub">Se abrió WhatsApp con tu reserva lista para enviar — y ya quedó registrada en el sistema de LavaExpress.</p>
+      <div class="ticket">
+        <div class="ticket-row"><span>Nombre</span><span id="tName"></span></div>
+        <div class="ticket-row"><span>Dirección</span><span id="tAddr"></span></div>
+        <div class="ticket-row"><span>Fecha</span><span id="tDate"></span></div>
+        <div class="ticket-row"><span>Entrega</span><span id="tTime"></span></div>
+        <div class="ticket-row"><span>Recogida</span><span id="tPickup"></span></div>
+        <div class="ticket-row"><span>Total estimado</span><span id="tPrice"></span></div>
+      </div>
+      <a class="cta-wa" id="waConfirm" href="#" target="_blank" style="margin-top:18px;"><span class="wa-dot"></span> ¿No se abrió? Reenviar por WhatsApp</a>
+      <button class="back-link" id="backBtn">← Hacer otra reserva</button>
+    </div>
+
+    <footer>
+      Demo con datos de ejemplo · LavaExpress by LEGION Studio
+      <span class="admin-link" id="goAdmin">Panel administrativo →</span>
+    </footer>
+
+    <a class="wa-float" id="waFloat" href="#" target="_blank" aria-label="WhatsApp">
+      <svg viewBox="0 0 24 24" fill="white"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.5-.8-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.5.1-.2 0-.4 0-.5C10.1 9.4 9.6 8 9.4 7.5c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 5 4.3.7.3 1.2.5 1.7.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 2-1.4.2-.7.2-1.2.1-1.4-.1-.1-.3-.2-.6-.3z"/><path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.7 1.5 5.3L2 22l4.9-1.3C8.4 21.6 10.2 22 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18.2c-1.6 0-3.2-.4-4.5-1.3l-.3-.2-3.2.8.9-3.1-.2-.3C4 14 3.5 12.5 3.5 12 3.5 7.3 7.3 3.5 12 3.5S20.5 7.3 20.5 12 16.7 20.2 12 20.2z"/></svg>
+    </a>
+  </div>
+
+  <!-- ================= VISTA ADMIN ================= -->
+  <div class="admin" id="adminView">
+    <div class="admin-pin" id="adminPinScreen">
+      <div class="lock">🔒</div>
+      <h2>Panel administrativo</h2>
+      <p>Ingresa el PIN para ver las lavadoras rentadas y disponibles hoy.</p>
+      <input type="text" maxlength="4" class="pin-input" id="pinInput" placeholder="••••" inputmode="numeric">
+      <button class="cta" id="pinBtn" style="margin-top:16px;">Entrar</button>
+      <p class="pin-hint">PIN de demostración: 1234</p>
+      <button class="back-link" id="pinExit">← Volver a la vista de cliente</button>
+    </div>
+
+    <div class="admin-dash" id="adminDash">
+      <div class="admin-top">
+        <h2>Agenda · LavaExpress</h2>
+        <button class="exit-link" id="dashExit">Salir</button>
+      </div>
+
+      <label style="margin-top:0;">Ver reservas del día</label>
+      <input type="date" id="adminDate" style="margin-bottom:6px;">
+
+      <div class="cards">
+        <div class="card"><div class="num" id="cardRented">—</div><div class="lbl">Rentadas ahora</div></div>
+        <div class="card"><div class="num" id="cardFree">—</div><div class="lbl">Disponibles ahora</div></div>
+        <div class="card card3"><div class="num" id="cardTotal">50</div><div class="lbl">Flota total de lavadoras</div></div>
+      </div>
+
+      <div class="sched-h">Agenda</div>
+      <div id="schedList"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://urmbbkxcrqdnhzvmgpgg.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVybWJia3hjcnFkbmh6dm1ncGdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNDE2NTUsImV4cCI6MjA5OTYxNzY1NX0.Da6-lHJ1BuLNypJD8epEoMDfema_RBh1_MvSL626Rjc';
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const TOTAL_UNITS = 50;
+  const RATE_PER_HOUR = 8000;
+  const WA_NUMBER = '573234953988';
+
+  const timeLabels = {7:'7:00 a.m.',9:'9:00 a.m.',11:'11:00 a.m.',13:'1:00 p.m.',15:'3:00 p.m.',17:'5:00 p.m.',19:'7:00 p.m.'};
+
+  const gaugeFill = document.getElementById('gaugeFill');
+  const gaugeNum = document.getElementById('gaugeNum');
+  const gaugeLabel = document.getElementById('gaugeLabel');
+  const CIRC = 163.4;
+
+  async function updateGauge(){
+    const time = document.getElementById('ftime').value;
+    const hours = document.getElementById('fhours').value;
+    const note = document.getElementById('availNote');
+    const btn = document.getElementById('ctaBtn');
+
+    if(!time || !hours){
+      gaugeFill.style.strokeDashoffset = CIRC;
+      gaugeNum.textContent = '—';
+      gaugeLabel.textContent = 'Elige fecha y hora para ver cupos';
+      note.style.display = 'none';
+      return;
+    }
+
+    note.style.display = 'flex';
+    note.className = 'avail-note';
+    note.innerHTML = 'Consultando disponibilidad...';
+    btn.disabled = true;
+
+    const { data: inUse, error } = await db.rpc('check_availability', { p_start: Number(time), p_hours: Number(hours) });
+
+    if(error){
+      note.className = 'avail-note warn';
+      note.innerHTML = 'No se pudo consultar disponibilidad. Intenta de nuevo.';
+      console.error(error);
+      return;
+    }
+
+    const available = TOTAL_UNITS - inUse;
+    const pct = inUse / TOTAL_UNITS;
+    gaugeFill.style.strokeDashoffset = CIRC - (pct * CIRC);
+    gaugeNum.textContent = available;
+    gaugeLabel.innerHTML = '<b>' + available + '</b> de ' + TOTAL_UNITS + ' lavadoras libres en ese horario';
+
+    if(available > 0){
+      note.className = 'avail-note ok';
+      note.innerHTML = 'Cupo disponible <b class="mono">' + available + '/' + TOTAL_UNITS + '</b>';
+      btn.disabled = false;
+    } else {
+      note.className = 'avail-note warn';
+      note.innerHTML = 'Sin cupo en ese horario · elige otra hora <b class="mono">0/' + TOTAL_UNITS + '</b>';
+      btn.disabled = true;
+    }
+  }
+
+  document.getElementById('ftime').addEventListener('change', updateGauge);
+  document.getElementById('fhours').addEventListener('change', updateGauge);
+
+  // ---- Enlaces de WhatsApp ----
+  function waLink(msg){ return 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(msg); }
+  document.getElementById('waHelp').href = waLink('Hola, tengo una duda sobre el alquiler de lavadoras a domicilio LavaExpress.');
+  document.getElementById('waFloat').href = waLink('Hola, quiero información sobre el alquiler de lavadoras a domicilio LavaExpress.');
+
+  document.getElementById('bookingForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const btn = document.getElementById('ctaBtn');
+    const start = Number(document.getElementById('ftime').value);
+    const hours = Number(document.getElementById('fhours').value);
+    const pickupHour = start + hours;
+    const pickupLabel = (pickupHour % 24) + ':00 (' + (pickupHour >= 12 ? 'p.m.' : 'a.m.') + ')';
+    const name = document.getElementById('fname').value;
+    const addr = document.getElementById('faddr').value;
+    const phone = document.getElementById('fphone').value;
+    const date = document.getElementById('fdate').value;
+    const price = hours * RATE_PER_HOUR;
+
+    btn.disabled = true;
+    btn.textContent = 'Guardando reserva...';
+
+    const { error } = await db.from('reservations').insert({
+      name: name,
+      address: addr,
+      phone: phone,
+      reservation_date: date,
+      start_hour: start,
+      hours: hours,
+      price: price
+    });
+
+    btn.disabled = false;
+    btn.textContent = 'Confirmar reserva';
+
+    if(error){
+      alert('No se pudo guardar la reserva, intenta de nuevo.');
+      console.error(error);
+      return;
+    }
+
+    document.getElementById('tName').textContent = name;
+    document.getElementById('tAddr').textContent = addr;
+    document.getElementById('tDate').textContent = date;
+    document.getElementById('tTime').textContent = timeLabels[start];
+    document.getElementById('tPickup').textContent = pickupLabel + ' aprox.';
+    document.getElementById('tPrice').textContent = '$' + price.toLocaleString('es-CO');
+
+    const waMsg = waLink(
+      'Hola, quiero confirmar mi reserva LavaExpress:\n' +
+      'Nombre: ' + name + '\n' +
+      'Dirección: ' + addr + '\n' +
+      'Fecha: ' + date + ', entrega ' + timeLabels[start] + '\n' +
+      'Recogida aprox: ' + pickupLabel
+    );
+    document.getElementById('waConfirm').href = waMsg;
+
+    // Se abre WhatsApp automáticamente para que el cliente solo tenga que dar "Enviar"
+    window.open(waMsg, '_blank');
+
+    document.querySelector('.panel').style.display = 'none';
+    document.getElementById('gaugeCard').style.display = 'none';
+    document.querySelector('.steps').style.display = 'none';
+    document.getElementById('confirmView').classList.add('active');
+  });
+
+  document.getElementById('backBtn').addEventListener('click', function(){
+    document.getElementById('confirmView').classList.remove('active');
+    document.querySelector('.panel').style.display = 'block';
+    document.getElementById('gaugeCard').style.display = 'flex';
+    document.querySelector('.steps').style.display = 'block';
+    document.getElementById('bookingForm').reset();
+    updateGauge();
+  });
+
+  document.getElementById('fdate').min = new Date().toISOString().split('T')[0];
+  document.getElementById('fdate').value = new Date().toISOString().split('T')[0];
+
+  // ---- Vista admin ----
+  document.getElementById('goAdmin').addEventListener('click', function(){
+    document.getElementById('clientView').style.display = 'none';
+    document.getElementById('adminView').classList.add('active');
+  });
+  document.getElementById('pinExit').addEventListener('click', function(){
+    document.getElementById('adminView').classList.remove('active');
+    document.getElementById('clientView').style.display = 'block';
+  });
+  document.getElementById('dashExit').addEventListener('click', function(){
+    document.getElementById('adminView').classList.remove('active');
+    document.getElementById('adminDash').style.display = 'none';
+    document.getElementById('adminPinScreen').style.display = 'block';
+    document.getElementById('pinInput').value = '';
+    document.getElementById('clientView').style.display = 'block';
+  });
+
+  let validPin = null;
+
+  document.getElementById('pinBtn').addEventListener('click', async function(){
+    const pinBtn = this;
+    const pin = document.getElementById('pinInput').value;
+    pinBtn.disabled = true;
+    pinBtn.textContent = 'Verificando...';
+
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('adminDate').value = today;
+
+    const { data, error } = await db.rpc('get_reservations_with_pin', { input_pin: pin, p_date: today });
+
+    pinBtn.disabled = false;
+    pinBtn.textContent = 'Entrar';
+
+    if(error){
+      document.getElementById('pinInput').style.borderColor = 'var(--coral)';
+      console.error(error);
+      return;
+    }
+
+    validPin = pin;
+    document.getElementById('adminPinScreen').style.display = 'none';
+    document.getElementById('adminDash').style.display = 'block';
+    renderAdmin(data || []);
+  });
+
+  document.getElementById('adminDate').addEventListener('change', async function(){
+    const { data, error } = await db.rpc('get_reservations_with_pin', { input_pin: validPin, p_date: this.value });
+    if(error){ console.error(error); return; }
+    renderAdmin(data || []);
+  });
+
+  function renderAdmin(reservations){
+    const nowHour = new Date().getHours();
+    const inUseNow = reservations.filter(r => nowHour >= r.start_hour && nowHour < (r.start_hour + Number(r.hours))).length;
+    document.getElementById('cardRented').textContent = inUseNow;
+    document.getElementById('cardFree').textContent = TOTAL_UNITS - inUseNow;
+
+    const list = document.getElementById('schedList');
+    list.innerHTML = '';
+
+    if(reservations.length === 0){
+      list.innerHTML = '<p style="font-size:13.5px; color:var(--gray); text-align:center; padding:20px 0;">Sin reservas registradas hoy todavía.</p>';
+      return;
+    }
+
+    const sorted = [...reservations].sort((a,b) => a.start_hour - b.start_hour);
+    sorted.forEach(r => {
+      const end = r.start_hour + Number(r.hours);
+      let statusClass = 'pend', statusLabel = 'Pendiente';
+      if(nowHour >= r.start_hour && nowHour < end){ statusClass = 'curso'; statusLabel = 'En curso'; }
+      else if(nowHour >= end){ statusClass = 'fin'; statusLabel = 'Finalizada'; }
+
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML =
+        '<div><div class="who">' + r.name + '</div>' +
+        '<div class="where">' + r.address + '</div>' +
+        '<span class="status ' + statusClass + '">' + statusLabel + '</span></div>' +
+        '<div class="when">' + (timeLabels[r.start_hour] || r.start_hour+':00') + ' → ' + (end % 24) + ':00</div>';
+      list.appendChild(row);
+    });
+  }
+</script>
+</body>
+</html>
